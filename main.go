@@ -1,16 +1,22 @@
 package main
 
 import (
+	"os"
+
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
 	"github.com/rs/zerolog/log"
-	spotifyauth "github.com/zmb3/spotify/v2/auth"
+	spotifyAuth "github.com/zmb3/spotify/v2/auth"
+
+	"goyav/config"
+	"goyav/goyavUser"
 	spotifyGoyav "goyav/handlers/spotify"
-	"os"
+	mongoGoyav "goyav/mongo"
 )
 
 var (
-	auth *spotifyauth.Authenticator
+	auth *spotifyAuth.Authenticator
+	conf *config.Config
 )
 
 func init() {
@@ -18,18 +24,29 @@ func init() {
 	if err != nil {
 		log.Debug().Err(err).Msg("Error loading .env file")
 	}
-	auth = spotifyauth.New(spotifyauth.WithRedirectURL(os.Getenv("REDIRECT_URL")), spotifyauth.WithScopes(spotifyauth.ScopePlaylistReadPrivate, spotifyauth.ScopeUserTopRead))
+
+	conf = config.NewConfig()
+	auth = spotifyAuth.New(spotifyAuth.WithRedirectURL(os.Getenv("REDIRECT_URL")), spotifyAuth.WithScopes(conf.Spotify.Scopes...))
 }
 
 func main() {
+	// database connection
+	mongoService, err := mongoGoyav.NewService(conf)
+	if err != nil {
+		log.Fatal().Err(err).Msg("Failed to connect to mongo. Exiting")
+	}
+
+	// goyavUser
+	userRepo := goyavUser.NewRepository(mongoService)
+	userServ := goyavUser.NewService(userRepo)
+
 	router := gin.Default()
 
 	//Routes
-	spotifyGoyav.RegisterSpotify(router, auth)
+	spotifyGoyav.RegisterSpotify(router, auth, userServ)
 
-	err := router.Run(":8080")
+	err = router.Run(":8080")
 	if err != nil {
 		log.Fatal().Err(err).Msg("Failed to start the server. Exiting")
 	}
-
 }

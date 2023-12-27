@@ -3,32 +3,34 @@ package spotify
 import (
 	"context"
 	"fmt"
-	"golang.org/x/oauth2"
-	"net/http"
-	"os"
-
 	"github.com/gin-gonic/gin"
 	"github.com/rs/zerolog/log"
 	"github.com/zmb3/spotify/v2"
 	spotifyauth "github.com/zmb3/spotify/v2/auth"
+	"golang.org/x/oauth2"
+	"goyav/goyavUser"
+	"net/http"
+	"os"
+	"time"
 )
 
-func RegisterSpotify(router *gin.Engine, auth *spotifyauth.Authenticator) {
+func RegisterSpotify(router *gin.Engine, auth *spotifyauth.Authenticator, userService *goyavUser.Service) {
 	router.GET("/spotify/auth", getAuthUrl(auth))
-	router.GET("/spotify/callback", authCallback(auth))
+	router.GET("/spotify/callback", authCallback(auth, userService))
 	router.GET("/spotify/me", getCurrentUser(auth))
 }
 
 func getAuthUrl(auth *spotifyauth.Authenticator) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		url := auth.AuthURL(os.Getenv("STATE"))
-		fmt.Println("Please log in to Spotify by visiting the following page in your browser:", url)
 		c.IndentedJSON(http.StatusOK, url)
 	}
 }
 
-func authCallback(auth *spotifyauth.Authenticator) gin.HandlerFunc {
+func authCallback(auth *spotifyauth.Authenticator, userService *goyavUser.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
+
+		// authenticate user
 		tok, err := auth.Token(c.Request.Context(), os.Getenv("STATE"), c.Request)
 		if err != nil {
 			log.Info().Err(err).Msg("Couldn't get token")
@@ -41,6 +43,26 @@ func authCallback(auth *spotifyauth.Authenticator) gin.HandlerFunc {
 			return
 		}
 
+		// create client for the current user
+		client := spotify.New(auth.Client(c.Request.Context(), tok))
+
+		// get current user info
+		user, err := client.CurrentUser(context.Background())
+		if err != nil {
+			log.Info().Err(err).Msg("Error while fetching for current currentUser")
+			c.IndentedJSON(http.StatusInternalServerError, err.Error())
+			return
+		}
+
+		// upsert user
+		goyavCurrentUser := goyavUser.MapSpotifyUserToGoyavUser(user)
+		err = userService.CreateUser(
+			c.Request.Context(),
+			goyavCurrentUser)
+		if err != nil {
+			log.Info().Err(err).Msg("Error while creating user")
+		}
+
 		// return the token
 		c.IndentedJSON(http.StatusOK, tok)
 	}
@@ -49,23 +71,52 @@ func authCallback(auth *spotifyauth.Authenticator) gin.HandlerFunc {
 func getCurrentUser(auth *spotifyauth.Authenticator) gin.HandlerFunc {
 	return func(c *gin.Context) {
 
-		var tok *oauth2.Token
-		if err := c.BindJSON(&tok); err != nil {
-			log.Info().Err(err).Msg("Error while parsing JSON")
-			c.IndentedJSON(http.StatusBadRequest, "Error while parsing JSON")
-			return
-		}
+		// get current user token from headers
+		accessToken := c.GetHeader("access_token")
+		tokenType := c.GetHeader("token_type")
+		refreshToken := c.GetHeader("refresh_token")
+		expiryStr := c.GetHeader("expiry")
 
-		client := spotify.New(auth.Client(c.Request.Context(), tok))
-
-		user, err := client.CurrentUser(context.Background())
+		// parse time
+		expiry, err := parseExpiry(expiryStr)
 		if err != nil {
-			log.Info().Err(err).Msg("Error while fetching for current user")
+			log.Info().Err(err).Msg("Error while parsing time")
 			c.IndentedJSON(http.StatusInternalServerError, err.Error())
 			return
 		}
-		log.Info().Str("user id", user.ID).Msg("User logged in")
 
-		c.IndentedJSON(http.StatusOK, user.ID)
+		// create oauth2 token needed for the spotify client
+		var tok oauth2.Token
+		tok.AccessToken = accessToken
+		tok.TokenType = tokenType
+		tok.RefreshToken = refreshToken
+		tok.Expiry = expiry
+
+		// new spotify client
+		client := spotify.New(auth.Client(c.Request.Context(), &tok))
+
+		// retrieve current user info
+		user, err := client.CurrentUser(context.Background())
+		if err != nil {
+			log.Info().Err(err).Msg("Error while fetching for current goyavUser")
+			c.IndentedJSON(http.StatusInternalServerError, err.Error())
+			return
+		}
+		goyavCurrentUser := goyavUser.MapSpotifyUserToGoyavUser(user)
+
+		c.IndentedJSON(http.StatusOK, goyavCurrentUser)
 	}
+}
+
+// Parses a string to Time using this layout : "2006-01-02T15:04:05.999999Z07:00"
+func parseExpiry(expiryStr string) (time.Time, error) {
+	layout := "2006-01-02T15:04:05.999999Z07:00"
+
+	expiry, err := time.Parse(layout, expiryStr)
+	if err != nil {
+		fmt.Println("Error parsing time:", err)
+		return time.Now(), err
+	}
+
+	return expiry, nil
 }
