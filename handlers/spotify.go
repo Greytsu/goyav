@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"golang.org/x/oauth2"
 	"net/http"
 	"os"
 
@@ -13,10 +12,9 @@ import (
 	spotifyGoyav "goyav/spotify"
 )
 
-func RegisterSpotify(public *gin.RouterGroup, private *gin.RouterGroup, auth *spotifyAuth.Authenticator, userService *goyavUser.Service, spotifyService *spotifyGoyav.Service) {
+func RegisterSpotify(public *gin.RouterGroup, auth *spotifyAuth.Authenticator, userService *goyavUser.Service, spotifyService *spotifyGoyav.Service) {
 	public.GET("/spotify/auth", getAuthUrl(auth))
 	public.GET("/spotify/callback", authCallback(auth, userService, spotifyService))
-	private.GET("/spotify/me", getCurrentUser(spotifyService))
 }
 
 func getAuthUrl(auth *spotifyAuth.Authenticator) gin.HandlerFunc {
@@ -58,39 +56,5 @@ func authCallback(auth *spotifyAuth.Authenticator, userService *goyavUser.Servic
 
 		// return the token
 		c.IndentedJSON(http.StatusOK, tok)
-	}
-}
-
-func getCurrentUser(spotifyService *spotifyGoyav.Service) gin.HandlerFunc {
-	return func(c *gin.Context) {
-
-		// get current user token from headers
-		accessToken := c.GetHeader("access_token")
-		tokenType := c.GetHeader("token_type")
-		refreshToken := c.GetHeader("refresh_token")
-		expiryStr := c.GetHeader("expiry")
-
-		// parse time
-		expiry, err := spotifyGoyav.ParseExpiry(expiryStr)
-		if err != nil {
-			log.Info().Err(err).Msg("Error while parsing time")
-			c.IndentedJSON(http.StatusInternalServerError, err.Error())
-			return
-		}
-
-		// create oauth2 token needed for the spotify client
-		var tok oauth2.Token
-		tok.AccessToken = accessToken
-		tok.TokenType = tokenType
-		tok.RefreshToken = refreshToken
-		tok.Expiry = expiry
-
-		goyavCurrentUser, err := spotifyService.GetCurrentUser(&tok)
-		if err != nil {
-			c.IndentedJSON(http.StatusInternalServerError, err.Error())
-			return
-		}
-
-		c.IndentedJSON(http.StatusOK, goyavCurrentUser)
 	}
 }

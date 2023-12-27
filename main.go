@@ -1,7 +1,6 @@
 package main
 
 import (
-	"goyav/middlewares"
 	"os"
 
 	"github.com/gin-gonic/gin"
@@ -11,8 +10,10 @@ import (
 
 	"goyav/config"
 	"goyav/goyavUser"
-	handlers "goyav/handlers/spotify"
+	handlers "goyav/handlers"
+	"goyav/middlewares"
 	mongoGoyav "goyav/mongo"
+	"goyav/playlist"
 	spotifyGoyav "goyav/spotify"
 )
 
@@ -45,17 +46,23 @@ func main() {
 	userRepo := goyavUser.NewRepository(mongoService)
 	userServ := goyavUser.NewService(userRepo)
 
+	// goyavPlaylist
+	playlistRepo := playlist.NewRepository(mongoService)
+	playlistServ := playlist.NewService(playlistRepo)
+
 	router := gin.Default()
 
 	// public routes
 	public := router.Group("/api/v1")
-	public.Use(middlewares.CheckCredentials(spotifyServ))
 
 	// private routes
 	private := router.Group("/api/v1")
+	private.Use(middlewares.CheckCredentials(spotifyServ))
 
 	//Routes
-	handlers.RegisterSpotify(public, private, auth, userServ, spotifyServ)
+	handlers.RegisterSpotify(public, auth, userServ, spotifyServ)
+	handlers.RegisterPlaylist(private, playlistServ)
+	handlers.RegisterUser(private, userServ)
 
 	err = router.Run(":8080")
 	if err != nil {

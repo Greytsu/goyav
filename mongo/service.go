@@ -15,17 +15,22 @@ import (
 
 const (
 	// collections
-	cUsers string = "users"
+	cUsers     string = "users"
+	cPlaylists string = "playlists"
 
 	// fields
-	fUserId = "user_id"
+	fUserId               = "user_id"
+	fPlaylistId           = "ID"
+	fPlaylistOwner        = "owner"
+	fPlaylistContributors = "contributors"
 )
 
 type MongoService struct {
 	Client           *mongo.Client
 	dbName           string
 	SelectionTimeout time.Duration
-	colUser          *mongo.Collection
+	colUsers         *mongo.Collection
+	colPlaylists     *mongo.Collection
 }
 
 func NewService(conf *config.Config) (*MongoService, error) {
@@ -44,7 +49,8 @@ func NewService(conf *config.Config) (*MongoService, error) {
 		Client:           client,
 		dbName:           dbName,
 		SelectionTimeout: conf.Mongo.SelectionTimeout,
-		colUser:          client.Database(dbName).Collection(cUsers),
+		colUsers:         client.Database(dbName).Collection(cUsers),
+		colPlaylists:     client.Database(dbName).Collection(cPlaylists),
 	}
 
 	err = res.ensureIndexes(context.Background())
@@ -63,7 +69,8 @@ func (s *MongoService) ensureIndexes(ctx context.Context) error {
 
 	var err error
 
-	_, err = s.colUser.Indexes().CreateOne(timeoutCtx, mongo.IndexModel{
+	// users
+	_, err = s.colUsers.Indexes().CreateOne(timeoutCtx, mongo.IndexModel{
 		Keys:    bson.D{{Key: fUserId, Value: 1}},
 		Options: options.Index().SetName("user_idx"),
 	})
@@ -71,9 +78,34 @@ func (s *MongoService) ensureIndexes(ctx context.Context) error {
 		return err
 	}
 
+	// playlists
+	playlistIndexId := mongo.IndexModel{
+		Keys:    bson.D{{Key: fPlaylistId, Value: 1}},
+		Options: options.Index().SetName("playlist_id_idx"),
+	}
+
+	playlistIndexOwner := mongo.IndexModel{
+		Keys:    bson.D{{Key: fPlaylistOwner, Value: 1}},
+		Options: options.Index().SetName("playlist_owner_idx"),
+	}
+
+	playlistIndexContributors := mongo.IndexModel{
+		Keys:    bson.D{{Key: fPlaylistContributors, Value: 1}},
+		Options: options.Index().SetName("playlist_contributors_idx"),
+	}
+
+	_, err = s.colPlaylists.Indexes().CreateMany(context.Background(), []mongo.IndexModel{playlistIndexId, playlistIndexOwner, playlistIndexContributors})
+	if err != nil {
+		return err
+	}
+
 	return err
 }
 
-func (s *MongoService) ColUser() *mongo.Collection {
-	return s.colUser
+func (s *MongoService) ColUsers() *mongo.Collection {
+	return s.colUsers
+}
+
+func (s *MongoService) ColPlaylists() *mongo.Collection {
+	return s.colPlaylists
 }

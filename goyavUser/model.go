@@ -3,11 +3,11 @@ package goyavUser
 import "time"
 
 type User struct {
-	ID          string    `json:"ID"`
-	DisplayName string    `json:"display_name"`
-	SpotifyUrl  string    `json:"spotify_url"`
-	Image       string    `json:"image"`
-	Icon        string    `json:"icon"`
-	CreatedAt   time.Time `json:"-"`
-	UpdatedAt   time.Time `json:"-"`
+	ID          string    `bson:"user_id" json:"user_id"`
+	DisplayName string    `bson:"display_name" json:"display_name"`
+	SpotifyUrl  string    `bson:"spotify_url" json:"spotify_url"`
+	Image       string    `bson:"image" json:"image"`
+	Icon        string    `bson:"icon" json:"icon"`
+	CreatedAt   time.Time `bson:"created_at,omitempty" json:"-"`
+	UpdatedAt   time.Time `bson:"updated_at,omitempty" json:"-"`
 }

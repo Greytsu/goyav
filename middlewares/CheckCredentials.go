@@ -35,13 +35,17 @@ func CheckCredentials(spotifyService *spotify.Service) gin.HandlerFunc {
 			tok.RefreshToken = refreshToken
 			tok.Expiry = expiry
 
-			if !spotifyService.CheckUser(&tok) {
-				c.JSON(http.StatusForbidden, gin.H{"error": "Access denied"})
-				c.Abort() // Abort further processing
+			user, err := spotifyService.GetCurrentUser(&tok)
+			if err == nil || user.ID != "" {
+				log.Debug().Msg("access authorized")
+				c.Request.Header.Add("user_id", user.ID)
+				c.Next()
 				return
 			}
 		}
 
-		c.Next()
+		log.Info().Msg("access denied")
+		c.JSON(http.StatusForbidden, gin.H{"error": "Access denied"})
+		c.Abort()
 	}
 }
