@@ -1,6 +1,7 @@
 package main
 
 import (
+	"goyav/middlewares"
 	"os"
 
 	"github.com/gin-gonic/gin"
@@ -10,8 +11,9 @@ import (
 
 	"goyav/config"
 	"goyav/goyavUser"
-	spotifyGoyav "goyav/handlers/spotify"
+	handlers "goyav/handlers/spotify"
 	mongoGoyav "goyav/mongo"
+	spotifyGoyav "goyav/spotify"
 )
 
 var (
@@ -36,14 +38,24 @@ func main() {
 		log.Fatal().Err(err).Msg("Failed to connect to mongo. Exiting")
 	}
 
+	// spotify
+	spotifyServ := spotifyGoyav.NewService(auth)
+
 	// goyavUser
 	userRepo := goyavUser.NewRepository(mongoService)
 	userServ := goyavUser.NewService(userRepo)
 
 	router := gin.Default()
 
+	// public routes
+	public := router.Group("/api/v1")
+	public.Use(middlewares.CheckCredentials(spotifyServ))
+
+	// private routes
+	private := router.Group("/api/v1")
+
 	//Routes
-	spotifyGoyav.RegisterSpotify(router, auth, userServ)
+	handlers.RegisterSpotify(public, private, auth, userServ, spotifyServ)
 
 	err = router.Run(":8080")
 	if err != nil {

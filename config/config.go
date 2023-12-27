@@ -4,7 +4,7 @@ import (
 	"os"
 	"time"
 
-	spotifyauth "github.com/zmb3/spotify/v2/auth"
+	spotifyAuth "github.com/zmb3/spotify/v2/auth"
 )
 
 type Config struct {
@@ -28,9 +28,9 @@ func NewConfig() *Config {
 			SelectionTimeout: 10 * time.Second,
 		},
 		Spotify: SpotifyConfig{Scopes: []string{
-			spotifyauth.ScopePlaylistReadPrivate,
-			spotifyauth.ScopeUserReadEmail,
-			spotifyauth.ScopeUserReadEmail,
+			spotifyAuth.ScopePlaylistReadPrivate,
+			spotifyAuth.ScopeUserReadEmail,
+			spotifyAuth.ScopeUserReadEmail,
 		},
 		},
 	}

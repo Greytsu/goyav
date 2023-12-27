@@ -2,6 +2,7 @@ package goyavUser
 
 import (
 	"context"
+	"time"
 
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -16,6 +17,8 @@ const (
 	FSpotifyUrl  = "spotify_url"
 	FImage       = "image"
 	FIcon        = "icon"
+	FCreatedAt   = "created_at"
+	FUpdatedAt   = "updated_at"
 )
 
 type Repository struct {
@@ -40,9 +43,11 @@ func (repo *Repository) CreateUser(ctx context.Context, user User) error {
 				FSpotifyUrl:  user.SpotifyUrl,
 				FImage:       user.Image,
 				FIcon:        user.Icon,
+				FUpdatedAt:   time.Now(),
 			},
 			"$setOnInsert": bson.M{
-				FUserId: user.ID,
+				FUserId:    user.ID,
+				FCreatedAt: time.Now(),
 			},
 		},
 		options.Update().SetUpsert(true),
