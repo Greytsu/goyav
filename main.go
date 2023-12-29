@@ -1,8 +1,6 @@
 package main
 
 import (
-	"os"
-
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
 	"github.com/rs/zerolog/log"
@@ -29,7 +27,7 @@ func init() {
 	}
 
 	conf = config.NewConfig()
-	auth = spotifyAuth.New(spotifyAuth.WithRedirectURL(os.Getenv("REDIRECT_URL")), spotifyAuth.WithScopes(conf.Spotify.Scopes...))
+	auth = spotifyAuth.New(spotifyAuth.WithRedirectURL(conf.Spotify.RedirectURL), spotifyAuth.WithScopes(conf.Spotify.Scopes...))
 }
 
 func main() {
@@ -60,7 +58,7 @@ func main() {
 	private.Use(middlewares.CheckCredentials(spotifyServ))
 
 	//Routes
-	handlers.RegisterSpotify(public, auth, userServ, spotifyServ)
+	handlers.RegisterSpotify(public, private, auth, conf, userServ, spotifyServ)
 	handlers.RegisterPlaylist(private, playlistServ)
 	handlers.RegisterUser(private, userServ)
 

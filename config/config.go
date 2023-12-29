@@ -18,7 +18,9 @@ type MongoConfig struct {
 }
 
 type SpotifyConfig struct {
-	Scopes []string
+	Scopes      []string
+	State       string
+	RedirectURL string
 }
 
 func NewConfig() *Config {
@@ -31,7 +33,14 @@ func NewConfig() *Config {
 			spotifyAuth.ScopePlaylistReadPrivate,
 			spotifyAuth.ScopeUserReadEmail,
 			spotifyAuth.ScopeUserReadEmail,
+			spotifyAuth.ScopeUserTopRead,
+			spotifyAuth.ScopePlaylistModifyPublic,
+			spotifyAuth.ScopePlaylistReadPrivate,
+			spotifyAuth.ScopePlaylistModifyPrivate,
+			spotifyAuth.ScopePlaylistReadCollaborative,
 		},
+			State:       os.Getenv("SPOTIFY_STATE"),
+			RedirectURL: os.Getenv("SPOTIFY_REDIRECT_URL"),
 		},
 	}
 }
