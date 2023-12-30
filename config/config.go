@@ -38,6 +38,7 @@ func NewConfig() *Config {
 			spotifyAuth.ScopePlaylistReadPrivate,
 			spotifyAuth.ScopePlaylistModifyPrivate,
 			spotifyAuth.ScopePlaylistReadCollaborative,
+			spotifyAuth.ScopeImageUpload,
 		},
 			State:       os.Getenv("SPOTIFY_STATE"),
 			RedirectURL: os.Getenv("SPOTIFY_REDIRECT_URL"),

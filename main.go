@@ -46,7 +46,7 @@ func main() {
 
 	// goyavPlaylist
 	playlistRepo := playlist.NewRepository(mongoService)
-	playlistServ := playlist.NewService(playlistRepo)
+	playlistServ := playlist.NewService(playlistRepo, spotifyServ)
 
 	router := gin.Default()
 

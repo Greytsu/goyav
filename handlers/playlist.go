@@ -1,9 +1,11 @@
 package handlers
 
 import (
+	"errors"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/rs/zerolog/log"
 
 	"goyav/playlist"
 )
@@ -48,12 +50,30 @@ func createPlaylist(playlistService *playlist.Service) gin.HandlerFunc {
 		var newPlaylist *playlist.Playlist
 		if err := c.BindJSON(&newPlaylist); err != nil {
 			c.IndentedJSON(http.StatusBadRequest, "Error while parsing JSON")
+			return
 		}
+
+		// Setup owner
 		newPlaylist.Owner = owner
 
-		createdPlaylist, err := playlistService.CreatePlaylist(c.Request.Context(), newPlaylist)
+		// Create token from headers
+		tok, err := createTokenFromHeader(c)
 		if err != nil {
+			log.Info().Err(err).Msg("Error while creating oAuth2 token from headers")
 			c.IndentedJSON(http.StatusInternalServerError, err.Error())
+			return
+		}
+
+		// Create goyav playlist
+		createdPlaylist, err := playlistService.CreatePlaylist(c.Request.Context(), newPlaylist, &tok)
+
+		if err != nil {
+			switch {
+			case errors.Is(playlist.InvalidAttributesError, err) || errors.Is(playlist.UnknownAttributeError, err):
+				c.IndentedJSON(http.StatusBadRequest, err.Error())
+			default:
+				c.IndentedJSON(http.StatusInternalServerError, err.Error())
+			}
 			return
 		}
 

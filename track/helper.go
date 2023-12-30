@@ -4,13 +4,16 @@ import "github.com/zmb3/spotify/v2"
 
 func MapSpotifyTrackToGoyavTrack(track spotify.FullTrack) Track {
 	return Track{
-		Name:           track.Name,
-		SpotifyId:      track.ID,
-		SpotifyAlbumId: track.Album.ID,
-		SpotifyUrl:     track.ExternalURLs["spotify"],
-		ImageBigUrl:    track.Album.Images[0].URL,
-		ImageMediumUrl: track.Album.Images[1].URL,
-		ImageSmallUrl:  track.Album.Images[2].URL,
+		Name:             track.Name,
+		SpotifyId:        track.ID,
+		SpotifyAlbumName: track.Album.Name,
+		SpotifyAlbumId:   track.Album.ID,
+		SpotifyUrl:       track.ExternalURLs["spotify"],
+		ImageUrls: ImageUrls{
+			Big:    track.Album.Images[0].URL,
+			Medium: track.Album.Images[1].URL,
+			Small:  track.Album.Images[2].URL,
+		},
 	}
 }
 
@@ -30,9 +33,11 @@ func MapSpotifySimpleTrackToGoyavTrack(track spotify.SimpleTrack) Track {
 		SpotifyId:      track.ID,
 		SpotifyAlbumId: track.Album.ID,
 		SpotifyUrl:     track.ExternalURLs["spotify"],
-		ImageBigUrl:    track.Album.Images[0].URL,
-		ImageMediumUrl: track.Album.Images[1].URL,
-		ImageSmallUrl:  track.Album.Images[2].URL,
+		ImageUrls: ImageUrls{
+			Big:    track.Album.Images[0].URL,
+			Medium: track.Album.Images[1].URL,
+			Small:  track.Album.Images[2].URL,
+		},
 	}
 }
 

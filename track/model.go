@@ -1,13 +1,23 @@
 package track
 
-import "github.com/zmb3/spotify/v2"
+import (
+	"github.com/zmb3/spotify/v2"
+)
 
 type Track struct {
-	Name           string     `json:"name"`
-	SpotifyId      spotify.ID `json:"spotify_id"`
-	SpotifyAlbumId spotify.ID `json:"spotify_album_id"`
-	SpotifyUrl     string     `json:"spotify_url"`
-	ImageBigUrl    string     `json:"image_big_url"`
-	ImageMediumUrl string     `json:"image_medium_url"`
-	ImageSmallUrl  string     `json:"image_small_url"`
+	Name             string     `json:"name" bson:"name"`
+	SpotifyId        spotify.ID `json:"spotify_id" bson:"spotify_id"`
+	ArtistName       string     `json:"artist_name" bson:"artist_name"`
+	ArtistId         spotify.ID `json:"artist_id" bson:"artist_id"`
+	SpotifyAlbumName string     `json:"spotify_album_name" bson:"spotify_album_name"`
+	SpotifyAlbumId   spotify.ID `json:"spotify_album_id" bson:"spotify_album_id"`
+	SpotifyUrl       string     `json:"spotify_url" bson:"spotify_url"`
+	ImageUrls        ImageUrls  `json:"image_urls" bson:"image_urls"`
+	Contributors     []string   `json:"contributors" bson:"contributors"`
+}
+
+type ImageUrls struct {
+	Big    string `json:"big" bson:"big"`
+	Medium string `json:"medium" bson:"medium"`
+	Small  string `json:"small" bson:"small"`
 }
