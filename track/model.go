@@ -5,8 +5,8 @@ import (
 )
 
 type Track struct {
-	Name             string     `json:"name" bson:"name"`
-	SpotifyId        spotify.ID `json:"spotify_id" bson:"spotify_id"`
+	TrackName        string     `json:"track_name" bson:"track_name"`
+	TrackId          spotify.ID `json:"track_id" bson:"track_id"`
 	ArtistName       string     `json:"artist_name" bson:"artist_name"`
 	ArtistId         spotify.ID `json:"artist_id" bson:"artist_id"`
 	SpotifyAlbumName string     `json:"spotify_album_name" bson:"spotify_album_name"`

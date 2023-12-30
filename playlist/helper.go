@@ -1,6 +1,12 @@
 package playlist
 
-import "errors"
+import (
+	"errors"
+
+	"github.com/rs/zerolog/log"
+
+	"goyav/track"
+)
 
 var UnknownAttributeError = errors.New("unknown AttributeType")
 
@@ -33,5 +39,42 @@ func IsValidAttributeValue(attrType AttributeType, attrValue float32) (bool, err
 		return attrValue >= 0.0 && attrValue <= 1.0, nil
 	default:
 		return false, UnknownAttributeError
+	}
+}
+
+func checkAttributes(newPlaylist *Playlist) error {
+	for _, attribute := range newPlaylist.TrackAttributes {
+		res, err := IsValidAttributeValue(attribute.AttributeType, attribute.AttributeValue)
+		if err != nil {
+			log.Info().Err(err).Msg("Error while checking attributes")
+			return err
+		}
+		if !res {
+			return InvalidAttributesError
+		}
+	}
+	return nil
+}
+
+func setupPlaylist(newPlaylist *Playlist) {
+	// Setup playlist contributors
+	if newPlaylist.Contributors == nil || len(newPlaylist.Contributors) == 0 {
+		newPlaylist.Contributors = []string{newPlaylist.Owner}
+	}
+
+	// Setup playlist tracks
+	if newPlaylist.Tracks == nil {
+		newPlaylist.Tracks = map[string]track.Track{}
+	}
+}
+
+func (p *Playlist) AddContributor(contributor string) {
+	p.Contributors = append(p.Contributors, contributor)
+}
+
+func (p *Playlist) AddContributorToTrack(trackID string, contributor string) {
+	if playlistTrack, ok := p.Tracks[trackID]; ok {
+		playlistTrack.Contributors = append(playlistTrack.Contributors, contributor)
+		p.Tracks[trackID] = playlistTrack
 	}
 }

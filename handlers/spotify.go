@@ -99,7 +99,17 @@ func getRecommendations(spotifyService *spotifyGoyav.Service) gin.HandlerFunc {
 			return
 		}
 
-		recommendations, err := spotifyService.GetFullRecommendations(&tok)
+		var recommendationRequest *spotifyGoyav.RecommendationRequest
+		if err := c.BindJSON(&recommendationRequest); err != nil {
+			c.IndentedJSON(http.StatusBadRequest, "Error while parsing JSON")
+			return
+		}
+
+		recommendations, err := spotifyService.GetRecommendations(&tok, recommendationRequest)
+		if err != nil {
+			c.IndentedJSON(http.StatusBadRequest, "Error while parsing JSON")
+			return
+		}
 		c.IndentedJSON(http.StatusOK, recommendations)
 	}
 }

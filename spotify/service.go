@@ -22,6 +22,7 @@ func NewService(auth *spotifyAuth.Authenticator) *Service {
 	return &Service{auth: auth}
 }
 
+// User
 func (s *Service) CheckUser(tok *oauth2.Token) bool {
 	// new spotify client
 	client := spotify.New(s.auth.Client(context.Background(), tok))
@@ -81,84 +82,58 @@ func (s *Service) GetCurrentUserTopTracks(tok *oauth2.Token) (*spotify.FullTrack
 }
 
 // Recommendations
-func (s *Service) GetFullRecommendations(tok *oauth2.Token) ([]track.Track, error) {
+func (s *Service) GetRecommendations(tok *oauth2.Token, recommendationRequest *RecommendationRequest) ([]track.Track, error) {
+
+	// check recommendationRequest
+	if !CheckRecommendationRequest(recommendationRequest) {
+		return nil, InvalidRecommendationRequestError
+	}
+
 	// new spotify client
 	client := spotify.New(s.auth.Client(context.Background(), tok))
 
-	// get user top artists
-	//spotifyArtists, err := client.CurrentUsersTopArtists(context.Background())
-	//if err != nil {
-	//	log.Info().Err(err).Msg("Error while fetching for current goyavUser top artists")
-	//	return nil, err
-	//}
-	//goyavArtists := artist.MapSpotifyArtistsToGoyavArtists(spotifyArtists.Artists)
+	var seeds spotify.Seeds
+	var err error
 
+	if recommendationRequest.Type == Track {
+		seeds, err = getUserTrackSeeds(client, recommendationRequest.Timerange)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	recommendedTracks, err := getRecommendations(context.Background(), client, seeds, recommendationRequest.Amount)
+	if err != nil {
+		return nil, err
+	}
+
+	return track.MapSpotifySimpleTracksToGoyavTracks(recommendedTracks.Tracks), nil
+}
+
+func getRecommendations(ctx context.Context, client *spotify.Client, seeds spotify.Seeds, amount int) (*spotify.Recommendations, error) {
+	trackAttributes := spotify.NewTrackAttributes()
+	trackAttributes.MinDuration(1000)
+
+	return client.GetRecommendations(ctx, seeds, trackAttributes, spotify.Limit(amount))
+}
+
+func getUserTrackSeeds(client *spotify.Client, timerange spotify.Range) (spotify.Seeds, error) {
 	// get user top tracks
-	spotifyTracks, err := client.CurrentUsersTopTracks(context.Background(), spotify.Timerange(spotify.ShortTermRange))
+	spotifyTracks, err := client.CurrentUsersTopTracks(context.Background(), spotify.Timerange(timerange), spotify.Limit(5))
 	if err != nil {
 		log.Info().Err(err).Msg("Error while fetching for current goyavUser top tracks")
-		return nil, err
+		return spotify.Seeds{}, err
 	}
 	goyavTracks := track.MapSpotifyTracksToGoyavTracks(spotifyTracks.Tracks)
 
-	var recommendedTracks []track.Track
-
 	// iterate by chunk since only 5 seeds can be used at a time
-	tracksLenght := len(goyavTracks)
-	for i := 0; i < tracksLenght; i += spotify.MaxNumberOfSeeds {
-		end := i + spotify.MaxNumberOfSeeds
-		if end > tracksLenght {
-			end = tracksLenght
-		}
-		trackChunk := goyavTracks[i:end]
-
-		recommendations, err := getTrackRecommendations(context.Background(), client, trackChunk)
-		if err != nil {
-			log.Info().Err(err).Msg("Error while retrieving recommendations")
-			return nil, err
-		}
-
-		recommendedTracks = append(recommendedTracks, track.MapSpotifySimpleTracksToGoyavTracks(recommendations.Tracks)...)
-	}
-
-	//TODO: get recommendations from artists
-	//TODO: remove duplicates from recommendations
-
-	return recommendedTracks, nil
-}
-
-func getRecommendations(ctx context.Context, client *spotify.Client, artists []artist.Artist, tracks []track.Track) (*spotify.Recommendations, error) {
-	seeds := spotify.Seeds{
-		Artists: artist.MapToTrackSeeds(artists),
-		Tracks:  track.MapToTrackSeeds(tracks),
-		Genres:  artist.ExtractGenresFromArtists(artists),
-	}
-
-	log.Info().Interface("seeds", seeds).Msg("seeds")
-
-	trackAttributes := spotify.NewTrackAttributes()
-	trackAttributes.MinDuration(1000)
-
-	spotify.Limit(100)
-
-	return client.GetRecommendations(ctx, seeds, trackAttributes, spotify.Limit(100))
-}
-
-func getTrackRecommendations(ctx context.Context, client *spotify.Client, tracks []track.Track) (*spotify.Recommendations, error) {
 	seeds := spotify.Seeds{
 		Artists: []spotify.ID{},
-		Tracks:  track.MapToTrackSeeds(tracks),
+		Tracks:  track.MapToTrackSeeds(goyavTracks),
 		Genres:  []string{},
 	}
 
-	log.Info().Interface("seeds", seeds).Msg("seeds")
-
-	trackAttributes := spotify.NewTrackAttributes()
-	trackAttributes.MinDuration(1000)
-
-	spotify.Limit(100)
-
-	return client.GetRecommendations(ctx, seeds, trackAttributes, spotify.Limit(100))
+	return seeds, nil
 }
 
 // Playlists
@@ -166,7 +141,7 @@ func (s *Service) CreateSpotifyPlayList(tok *oauth2.Token, userID, playlistName 
 	client := spotify.New(s.auth.Client(context.Background(), tok))
 
 	// Open the image
-	image, err := os.Open("assets/goyav_small.png")
+	image, err := os.Open("assets/goyav.png")
 	if err != nil {
 		log.Info().Err(err).Msg("error while opening image")
 		return "", err
@@ -188,4 +163,13 @@ func (s *Service) CreateSpotifyPlayList(tok *oauth2.Token, userID, playlistName 
 	}
 
 	return playlist.ID.String(), nil
+}
+
+func (s *Service) UpdatePlaylistTracks(ctx context.Context, tok *oauth2.Token, playlistID spotify.ID, tracks map[string]track.Track) error {
+	client := spotify.New(s.auth.Client(context.Background(), tok))
+
+	var trackIDs []spotify.ID
+	trackIDs = MapTracksToSpotifyIDs(tracks)
+
+	return client.ReplacePlaylistTracks(ctx, playlistID, trackIDs...)
 }

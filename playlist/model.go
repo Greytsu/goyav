@@ -1,30 +1,33 @@
 package playlist
 
 import (
-	"goyav/track"
 	"time"
+
+	"github.com/zmb3/spotify/v2"
+
+	"goyav/track"
 )
 
 type AttributeType string
 
 const (
-	Acousticness     AttributeType = "Acousticness"
-	Danceability     AttributeType = "Danceability"
-	Energy           AttributeType = "Energy"
-	Instrumentalness AttributeType = "Instrumentalness"
-	Key              AttributeType = "Key"
-	Liveness         AttributeType = "Liveness"
-	Loudness         AttributeType = "Loudness"
-	Mode             AttributeType = "Mode"
-	Popularity       AttributeType = "Popularity"
-	Speechiness      AttributeType = "Speechiness"
-	Tempo            AttributeType = "Tempo"
-	Valence          AttributeType = "Valence"
+	Acousticness     AttributeType = "acousticness"
+	Danceability     AttributeType = "danceability"
+	Energy           AttributeType = "energy"
+	Instrumentalness AttributeType = "instrumentalness"
+	Key              AttributeType = "key"
+	Liveness         AttributeType = "liveness"
+	Loudness         AttributeType = "loudness"
+	Mode             AttributeType = "mode"
+	Popularity       AttributeType = "popularity"
+	Speechiness      AttributeType = "speechiness"
+	Tempo            AttributeType = "tempo"
+	Valence          AttributeType = "valence"
 )
 
 type Playlist struct {
 	ID              string                 `bson:"id" json:"ID"`
-	SpotifyID       string                 `bson:"spotify_id" json:"spotify_id"`
+	SpotifyID       spotify.ID             `bson:"spotify_id" json:"spotify_id"`
 	Owner           string                 `bson:"owner" json:"owner"`
 	Name            string                 `bson:"name" json:"name"`
 	Tracks          map[string]track.Track `bson:"tracks" json:"tracks"`

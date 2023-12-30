@@ -14,7 +14,9 @@ import (
 )
 
 const (
-	fPlaylistId = "id"
+	fPlaylistId   = "id"
+	fTracks       = "tracks"
+	fContributors = "contributors"
 )
 
 var PlaylistNotFoundError = errors.New("Playlist not found")
@@ -53,12 +55,12 @@ func (repo *Repository) GetPlaylists(ctx context.Context) (*[]Playlist, error) {
 	return &playlists, nil
 }
 
-func (repo *Repository) GetPlaylist(ctx context.Context, id string) (*Playlist, error) {
+func (repo *Repository) GetPlaylist(ctx context.Context, playlistID string) (*Playlist, error) {
 	timeoutCtx, cancel := context.WithTimeout(ctx, repo.mongoService.SelectionTimeout)
 	defer cancel()
 
 	// filter
-	filter := bson.M{fPlaylistId: id}
+	filter := bson.M{fPlaylistId: playlistID}
 
 	var playlist Playlist
 	err := repo.mongoService.ColPlaylists().FindOne(timeoutCtx, filter).Decode(&playlist)
@@ -92,4 +94,42 @@ func (repo *Repository) CreatePlaylist(ctx context.Context, playlist *Playlist) 
 			return playlist, err
 		}
 	}
+}
+
+func (repo *Repository) UpdatePlaylistTracks(ctx context.Context, playlist *Playlist) error {
+	//Non-thread-safety to avoid data corruption
+	repo.Lock()
+	defer repo.Unlock()
+
+	timeoutCtx, cancel := context.WithTimeout(ctx, repo.mongoService.SelectionTimeout)
+	defer cancel()
+
+	filter := bson.M{fPlaylistId: playlist.ID}
+
+	log.Info().Str("playlist id", playlist.ID).Msg("Updating playlist")
+	_, err := repo.mongoService.ColPlaylists().UpdateOne(timeoutCtx, filter, bson.M{
+		"$set": bson.M{
+			fTracks: playlist.Tracks,
+		},
+	})
+	return err
+}
+
+func (repo *Repository) UpdatePlaylistContributors(ctx context.Context, playlist *Playlist) error {
+	//Non-thread-safety to avoid data corruption
+	repo.Lock()
+	defer repo.Unlock()
+
+	timeoutCtx, cancel := context.WithTimeout(ctx, repo.mongoService.SelectionTimeout)
+	defer cancel()
+
+	filter := bson.M{fPlaylistId: playlist.ID}
+
+	log.Info().Str("playlist id", playlist.ID).Msg("Updating playlist")
+	_, err := repo.mongoService.ColPlaylists().UpdateOne(timeoutCtx, filter, bson.M{
+		"$set": bson.M{
+			fContributors: playlist.Contributors,
+		},
+	})
+	return err
 }
